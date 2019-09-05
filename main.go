@@ -186,7 +186,9 @@ func forwardAndZeroCopy(from net.Conn, to net.Conn, mirrors []mirror, errChForwa
 			}
 
 			nteed, err = unix.Tee(p[0], m.mirrorPipe[1], MaxInt, SPLICE_F_MOVE)
-			if err != nil {
+			if err == io.EOF {
+				return
+			} else if err != nil {
 				m.conn.Close()
 				atomic.StoreUint32(&m.closed, 1)
 				select {
@@ -213,13 +215,17 @@ func forwardAndCopy(from net.Conn, to net.Conn, mirrors []mirror, errChForwardee
 		var b [defaultBufferSize]byte
 
 		n, err := from.Read(b[:])
-		if err != nil {
+		if err == io.EOF {
+			return
+		} else if err != nil {
 			errChForwardee <- err
 			return
 		}
 
 		_, err = to.Write(b[:n])
-		if err != nil {
+		if err == io.EOF {
+			return
+		} else if err != nil {
 			errChForwardee <- err
 			return
 		}
@@ -230,7 +236,9 @@ func forwardAndCopy(from net.Conn, to net.Conn, mirrors []mirror, errChForwardee
 			}
 			mirrors[i].conn.SetWriteDeadline(time.Now().Add(writeTimeout))
 			_, err = mirrors[i].conn.Write(b[:n])
-			if err != nil {
+			if err == io.EOF {
+				return
+			} else if err != nil {
 				mirrors[i].conn.Close()
 				atomic.StoreUint32(&mirrors[i].closed, 1)
 				select {
