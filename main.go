@@ -55,13 +55,17 @@ func forward(from net.Conn, to net.Conn, errCh chan error) {
 		var b [defaultBufferSize]byte
 
 		n, err := from.Read(b[:])
-		if err != nil {
+		if err == io.EOF {
+			return
+		} else if err != nil {
 			errCh <- err
 			return
 		}
 
 		_, err = to.Write(b[:n])
-		if err != nil {
+		if err == io.EOF {
+			return
+		} else if err != nil {
 			errCh <- err
 			return
 		}
