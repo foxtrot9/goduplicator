@@ -36,7 +36,9 @@ func readAndDiscard(m mirror, errCh chan error) {
 	for {
 		var b [defaultBufferSize]byte
 		_, err := m.conn.Read(b[:])
-		if err != nil {
+		if err == io.EOF {
+			return
+		} else if err != nil {
 			m.conn.Close()
 			atomic.StoreUint32(&m.closed, 1)
 			select {
